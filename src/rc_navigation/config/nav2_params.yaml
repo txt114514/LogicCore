@@ -28,7 +28,7 @@ bt_navigator:
 
 controller_server:
   ros__parameters:
-    use_sim_time: False
+    use_sim_time: True
     controller_frequency: 20.0
     min_x_velocity_threshold: 0.005
     min_y_velocity_threshold: 0.005
@@ -61,13 +61,13 @@ controller_server:
       time_steps: 56 # prediction horizon = time_steps x model_dt = 3s
       model_dt: 0.05 # =1/controller_frequency
       batch_size: 2000 # Count of randomly sampled candidate trajectories from current optimal control sequence in a given iteration. 1000 @ 50 Hz or 2000 @ 30 Hz seems to produce good results.
-      vx_std: 0.5
-      vy_std: 0.5
-      wz_std: 0.6
-      vx_max: 0.8 # prediction horizon x vx_max = 3.0 m -->local costmap dim should larger than 3.0 x 2 = 6m
-      vx_min: -0.8 # Maximum reverse velocity (m/s).
-      vy_max: 0.8
-      wz_max: 0.8
+      vx_std: 2.5
+      vy_std: 2.5
+      wz_std: 2.6
+      vx_max: 2.8 # prediction horizon x vx_max = 3.0 m -->local costmap dim should larger than 3.0 x 2 = 6m
+      vx_min: -2.8 # Maximum reverse velocity (m/s).
+      vy_max: 2.8
+      wz_max: 2.8
       iteration_count: 1 # Recommended to remain as 1 and instead prefer larger batch sizes.
       prune_distance: 4.0 # proportion to your maximum velocity and prediction horizon.
       transform_tolerance: 0.1 # Time tolerance for data transformations with TF (s).
@@ -161,7 +161,7 @@ local_costmap:
       publish_frequency: 10.0 # 地图数据发布频率(Hz)
       global_frame: odom     # 全局坐标系（使用里程计坐标系）
       robot_base_frame: base_link  # 机器人本体坐标系
-      use_sim_time: false     # 使用仿真时间
+      use_sim_time: true     # 使用仿真时间
       rolling_window: true   # 启用滚动窗口模式
       transform_tolerance: 1.0 # 坐标变换容忍时间
       width: 20   # 地图宽度3米
@@ -255,7 +255,7 @@ global_costmap:
           obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
-        map_subscribe_transient_local: True
+        map_subscribe_transient_local: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
@@ -264,15 +264,15 @@ global_costmap:
 
 map_saver:
   ros__parameters:
+    use_sim_time: True
     save_map_timeout: 5.0
     free_thresh_default: 0.25 # 自由区域阈值，概率值小于0.25的栅格视为自由
     occupied_thresh_default: 0.65 # 占据区域阈值，概率值大于0.65的栅格视为障碍
-    map_subscribe_transient_local: True
-    yaml_filename: "tb3_sandbox.yaml"
+    map_subscribe_transient_local: true
 planner_server:
   ros__parameters:
     expected_planner_frequency: 10.0
-    use_sim_time: false
+    use_sim_time: True
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_navfn_planner::NavfnPlanner"
@@ -281,40 +281,13 @@ planner_server:
       allow_unknown: true # 允许在位置区域通行
 smoother_server:
   ros__parameters:
-    use_sim_time: True
-    smoother_plugins: ["SmoothPath"]
-    SmoothPath:
-      # 3rd JUST SOSO
-      # plugin: "nav2_smoother::SimpleSmoother"
-      # tolerance: 1.0e-10
-      # do_refinement: True
-      # refinement_num: 5
-      # max_its: 1000
-      # w_data: 0.2
-      # w_smooth: 0.3
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
 
-      # 1st BEST
-      plugin: "nav2_constrained_smoother/ConstrainedSmoother"
-      reversing_enabled: false       # whether to detect forward/reverse direction and cusps. Should be set to false for paths without orientations assigned
-      path_downsampling_factor: 3   # every n-th node of the path is taken. Useful for speed-up
-      path_upsampling_factor: 1     # 0 - path remains downsampled, 1 - path is upsampled back to original granularity using cubic bezier, 2... - more upsampling
-      keep_start_orientation: false  # whether to prevent the start orientation from being smoothed
-      keep_goal_orientation: false   # whether to prevent the gpal orientation from being smoothed
-      minimum_turning_radius: 0.40  # minimum turning radius the robot can perform. Can be set to 0.0 (or w_curve can be set to 0.0 with the same effect) for diff-drive/holonomic robots
-      w_curve: 30.0                 # weight to enforce minimum_turning_radius
-      w_dist: 0.0                   # weight to bind path to original as optional replacement for cost weight
-      w_smooth: 2000000.0           # weight to maximize smoothness of path
-      w_cost: 100.0                 # weight to steer robot away from collision and cost
-
-      # Parameters used to improve obstacle avoidance near cusps (forward/reverse movement changes)
-      w_cost_cusp_multiplier: 3.0   # option to use higher weight during forward/reverse direction change which is often accompanied with dangerous rotations
-      cusp_zone_length: 2.5         # length of the section around cusp in which nodes use w_cost_cusp_multiplier (w_cost rises gradually inside the zone towards the cusp point, whose costmap weight eqals w_cost*w_cost_cusp_multiplier)
-      optimizer:
-        max_iterations: 70            # max iterations of smoother
-        debug_optimizer: false        # print debug info
-        gradient_tol: 5e3
-        fn_tol: 1.0e-15
-        param_tol: 1.0e-20
 behavior_server:
   ros__parameters:
     local_costmap_topic: local_costmap/costmap_raw
