@@ -5,6 +5,7 @@ cmake-build-debug/
 install/
 devel/
 log/
-*.db3
-*metadata.yaml
+*.db3*
+*metadata.yaml*
 .vscode/start_program
+*.pyc
