@@ -64,12 +64,13 @@ void ObstacleLayerUltra::onInitialize()
         declareParameter(source + "." + "topic", rclcpp::ParameterValue(source));
         declareParameter(source + "." + "obstacle_max_range", rclcpp::ParameterValue(2.5));
         declareParameter(source + "." + "obstacle_min_range", rclcpp::ParameterValue(0.0));
-
+        declareParameter(source + "." + "base_frame", rclcpp::ParameterValue(std::string("base_link")));
         node->get_parameter(name_ + "." + source + "." + "topic", topic);
 
         // get the obstacle range for the sensor
         node->get_parameter(name_ + "." + source + "." + "obstacle_max_range", _obstacle_max_range);
         node->get_parameter(name_ + "." + source + "." + "obstacle_min_range", _obstacle_min_range);
+        node->get_parameter(name_ + "." + source + "." + "base_frame", base_frame_);
     }
     // 创建tf2_ros::Buffer对象
     // tf_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
@@ -99,6 +100,22 @@ void ObstacleLayerUltra::laserScanCallback(const sensor_msgs::msg::LaserScan::Co
     float current_angle = scan->angle_min;
     // RCLCPP_INFO(logger_, "Received laser scan with %zu points", scan->ranges.size());
     last_update_time_ = scan->header.stamp;
+    auto transform = geometry_msgs::msg::TransformStamped();
+    try
+    {
+        transform = tf_->lookupTransform(
+            laser_frame_,
+            base_frame_,
+            last_update_time_,
+            rclcpp::Duration::from_seconds(_transform_tolerance));
+    }
+    catch (const tf2::TransformException &ex)
+    {
+        RCLCPP_WARN(logger_, "Could not transform %s to %s: %s", laser_frame_.c_str(), base_frame_.c_str(), ex.what());
+        return; // 如果变换失败，直接返回
+    }
+    auto x_bias = transform.transform.translation.x;
+    auto y_bias = transform.transform.translation.y;
     for (size_t i = 0; i < scan->ranges.size(); ++i)
     {
         float range = scan->ranges[i];
@@ -112,20 +129,42 @@ void ObstacleLayerUltra::laserScanCallback(const sensor_msgs::msg::LaserScan::Co
         }
 
         // 跳过不在障碍物检测范围内的点
-        if (range < _obstacle_min_range || range > _obstacle_max_range)
-        {
-            current_angle += scan->angle_increment; // 角度递增
-            continue;
-        }
+        // if (range < _obstacle_min_range || range > _obstacle_max_range)
+        // {
+        //     current_angle += scan->angle_increment; // 角度递增
+        //     continue;
+        // }
 
         // 计算点坐标并添加到点云
         float x = range * std::cos(current_angle);
         float y = range * std::sin(current_angle);
+        x_bias += x; // 添加偏移量
+        y_bias += y; // 添加偏移量
+        float range_transformed = std::sqrt(x_bias * x_bias + y_bias * y_bias);
+        if (range_transformed < _obstacle_min_range || range_transformed > _obstacle_max_range)
+        {
+            current_angle += scan->angle_increment; // 角度递增
+            continue;                               // 跳过不在障碍物检测范围内的点
+        }
         cloud_ptr_->points.emplace_back(pcl::PointXYZ{x, y, 0.0});
 
         // 更新角度（注意：应在处理完当前点后更新角度）
         current_angle += scan->angle_increment;
     }
+
+    // 将点云从激光坐标系转换到base_link坐标系
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    // pcl_ros::transformPointCloud(*cloud_ptr_, *transformed_cloud, transform);
+    // cloud_ptr_->clear();
+    // for (auto &point : transformed_cloud->points)
+    // {
+    //     double range = std::sqrt(point.x * point.x + point.y * point.y);
+    //     if (range < _obstacle_min_range || range > _obstacle_max_range)
+    //     {
+    //         continue; // 跳过不在障碍物检测范围内的点
+    //     }
+    //     cloud_ptr_->points.emplace_back(pcl::PointXYZ{point.x, point.y, point.z});
+    // }
 }
 void ObstacleLayerUltra::updateBounds(double robot_x, double robot_y, double robot_yaw, double *min_x, double *min_y, double *max_x, double *max_y)
 {
