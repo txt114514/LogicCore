@@ -72,7 +72,7 @@ bt_navigator_navigate_to_pose_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    controller_frequency: 20.0
+    controller_frequency: 40.0
     min_x_velocity_threshold: 0.005
     min_y_velocity_threshold: 0.005
     min_theta_velocity_threshold: 0.01
@@ -102,15 +102,15 @@ controller_server:
       adjustHeadingSpeed: 0.2 # angular speed to adjust heading
       # 
       time_steps: 40 # prediction horizon = time_steps x model_dt = 3s
-      model_dt: 0.05 # =1/controller_frequency
-      batch_size: 2000 # Count of randomly sampled candidate trajectories from current optimal control sequence in a given iteration. 1000 @ 50 Hz or 2000 @ 30 Hz seems to produce good results.
+      model_dt: 0.025 # =1/controller_frequency
+      batch_size: 3000 # Count of randomly sampled candidate trajectories from current optimal control sequence in a given iteration. 1000 @ 50 Hz or 2000 @ 30 Hz seems to produce good results.
       vx_std: 0.5
       vy_std: 0.5
       wz_std: 0.2
-      vx_max: 3.0 # prediction horizon x vx_max = 3.0 m -->local costmap dim should larger than 3.0 x 2 = 6m
-      vx_min: -3.0 # Maximum reverse velocity (m/s).
-      vy_max: 3.8
-      wz_max: 2.8
+      vx_max: 1.0 # prediction horizon x vx_max = 3.0 m -->local costmap dim should larger than 3.0 x 2 = 6m
+      vx_min: -1.0 # Maximum reverse velocity (m/s).
+      vy_max: 1.0
+      wz_max: 1.0
       iteration_count: 1 # Recommended to remain as 1 and instead prefer larger batch sizes.
       prune_distance: 4.0 # proportion to your maximum velocity and prediction horizon.
       transform_tolerance: 0.1 # Time tolerance for data transformations with TF (s).
@@ -131,8 +131,7 @@ controller_server:
       GoalAngleCritic: # 当机器人距离目标点较近时，鼓励它调整角度朝向目标的朝向
         cost_weight: 10.0
         threshold_to_consider: 0.8 #距离三米开始对齐
-
-      GoalCritic: #鼓励机器人靠近最终目标位置
+      GoalCritic: # 鼓励机器人靠近最终目标位置
         enabled: true
         cost_power: 1
         cost_weight: 5.0
@@ -200,8 +199,8 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 20.0  # 代价地图更新频率(Hz)
-      publish_frequency: 20.0 # 地图数据发布频率(Hz)
+      update_frequency: 10.0  # 代价地图更新频率(Hz)
+      publish_frequency: 10.0 # 地图数据发布频率(Hz)
       global_frame: odom     # 全局坐标系（使用里程计坐标系）
       robot_base_frame: base_link  # 机器人本体坐标系
       use_sim_time: false     # 使用仿真时间
@@ -210,7 +209,7 @@ local_costmap:
       width: 15   # 地图宽度3米
       height: 15  # 地图高度3米
       resolution: 0.05     # 分辨率5cm/格
-      robot_radius: 0.22   # 机器人碰撞半径22cm
+      robot_radius: 0.5   # 机器人碰撞半径22cm
       plugins: ["obstacle_layer", "inflation_layer"] # 激活的层级
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayerUltra"
@@ -237,7 +236,6 @@ local_costmap:
         enabled: True
         cost_scaling_factor: 2.0
         inflation_radius: 1.20 
-        inflate_unknown: false
       always_send_full_costmap: True # 始终发布完整地图
                         
 
@@ -279,7 +277,7 @@ global_costmap:
       robot_base_frame: base_link
       transform_tolerance: 1.0 # 坐标变换容忍时间
       use_sim_time: false
-      robot_radius: 0.22 # 机器人碰撞半径0.22米，用于膨胀层生成避障区域
+      robot_radius: 0.5 # 机器人碰撞半径0.22米，用于膨胀层生成避障区域
       resolution: 0.05 # 地图分辨率为5厘米/像素
       track_unknown_space: False # 将未知区域视为可通行区域
       plugins: ["static_layer", "obstacle_layer","inflation_layer"]
@@ -306,12 +304,10 @@ global_costmap:
       static_layer:  # 静态地图层
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
-        unknown_value_to_free: False
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 2.0 # 代价值随距离的衰减系数，值越大衰减越快
         inflation_radius: 1.20
-        inflate_unknown: false
       always_send_full_costmap: True
 
 map_server:
@@ -426,9 +422,9 @@ velocity_smoother:
     smoothing_frequency: 40.0
     scale_velocities: False
     feedback: "OPEN_LOOP"
-    max_velocity: [3.0, 3.0, 4.0] # 最大速度限制
-    min_velocity: [-3.0, -3.0, -4.0] # 最小速度限制
-    max_accel: [1.5, 1.5, 2.0] # 最大加速度限制
-    max_decel: [-1.5, -1.5, -2.0]
+    max_velocity: [1.0, 1.0, 1.4] # 最大速度限制
+    min_velocity: [-1.0, -1.0, -1.4] # 最小速度限制
+    max_accel: [1.0, 1.0, 1.0] # 最大加速度限制
+    max_decel: [-1.0, -1.0, -1.0]
     deadband_velocity: [0.0, 0.0, 0.0] # 速度死区，忽略微小速度指令
-    velocity_timeout: 0.2
+    velocity_timeout: 1.0

@@ -10,7 +10,7 @@ from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node,ComposableNodeContainer
 def generate_launch_description():
     ld=LaunchDescription()
-    param_file_path=os.path.join(get_package_share_directory('rc_navigation'),'config','nav2_params_real.yaml')
+    param_file_path=os.path.join(get_package_share_directory('rc_navigation'),'config','nav2_params_real_conser.yaml')
     ld.add_action(DeclareLaunchArgument('use_sim_time', default_value='false',description='Use simulation clock'))
     ld.add_action(DeclareLaunchArgument('use_composition',default_value='False',description='Use lifecycle nodes'))
     ld.add_action(DeclareLaunchArgument('params_file',default_value=param_file_path,description='Full path to the ROS2 parameters file to use'))
