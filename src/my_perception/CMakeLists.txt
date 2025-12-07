@@ -51,7 +51,8 @@ install(
 
 install(PROGRAMS
     scripts/slam_riqiang.py
+    scripts/sick_get.py
+    scripts/slam.py
     DESTINATION lib/${PROJECT_NAME}
 )
-
 ament_auto_package()

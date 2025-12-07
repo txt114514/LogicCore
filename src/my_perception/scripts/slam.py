@@ -24,7 +24,7 @@ class fusion_node_t(Node):
         self.declare_parameter('slam_to_map',[0.46876+0.26775,-0.08475-0.0815,0.0])
         
         # 新增Sick相关参数
-        self.declare_parameter('sick_topic', '/sick')          # Sick话题名称
+        self.declare_parameter('sick_topic', '/sick_data')          # Sick话题名称
         self.declare_parameter('sick_buffer_size', 10)         # Sick数据缓存大小
         self.declare_parameter('sick_lateral_offset', 0.0)     # Sick到base_link的横向偏移补偿
         
