@@ -26,7 +26,7 @@ class PointMatcher:
         left_front_point=[15.01785,0.082415] #左上
         self.target_points = [
             left_back_point,    # 左下
-            right_back_point,   # 右下
+            right_back_point,   # 右下s
             right_front_point,  # 右上
             left_front_point     # 左上
         ]
