@@ -34,6 +34,8 @@ class dispose_serial_init:
     def _run_loop(self):
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
+    def write(self, data: bytes):
+        self.serial.write(data)
     def data_callback(self, data: bytes):#解析数据帧
         """串口数据回调函数 — 当收到下位机数据时触发"""
         if not data :
