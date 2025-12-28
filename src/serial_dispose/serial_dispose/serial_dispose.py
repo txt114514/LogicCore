@@ -7,7 +7,8 @@ from std_msgs.msg import String
 import time
 import sys
 import numpy as np
-
+from rclpy.guard_condition import GuardCondition
+from queue import Queue
 from get_dispose_serial.myserial import AsyncSerial_t 
 class SerialDisposeNode(Node):
     def __init__(self):
@@ -20,19 +21,21 @@ class SerialDisposeNode(Node):
         self.publisher_ = self.create_publisher(Vector3Stamped, 'lidar_position', 10)
         self.publisher_odom = self.create_publisher(Vector3Stamped, 'odom_data', 10)
         self.subscription_cmd_vel = self.create_subscription(Twist,'cmd_vel',self.cmd_vel_callback,10)
-
+        self.rx_queue = Queue()
+        self.guard = self.create_guard_condition(self.process_rx_queue)
         self.out_first_frame = b'\xFA'
         self.out_frame_list = {
             "joy_cmd": {
-            "id": b'\xAA',
+            "id": b'\xA0',
             "fmt": "<fff"
         }
 }
         self.in_first_frame = b'\xFF'
         self.in_frame_list = {
-            b'\xA0': {
+            b'\xAA': {
                 "name": "odom_frame",
                 "dispose": self.dispose_odom,
+                "send": self.publisher_odom,
                 "fmt": "<fff"
             },
         }   
@@ -43,20 +46,27 @@ class SerialDisposeNode(Node):
         data = struct.pack(self.out_frame_list["joy_cmd"]["fmt"], linear_x,linear_y, angular_z)
         send_joy = self.out_first_frame + self.out_frame_list["joy_cmd"]["id"] + data
         self.serial.write(send_joy)
-    def serial_callback(self, data):
-        if len(data) < 2:
-            return
-        if data[0:1] != self.in_first_frame:
-            return
-        frame_id = data[1:2]
-        frame_data = self.in_frame_list.get(frame_id)
-        if frame_data is None:
-            return
-        else :
-            if len(data) < 2 + struct.calcsize(frame_data["fmt"]):
-                return
-            get_data = frame_data["dispose"](data[2:2 + struct.calcsize(frame_data["fmt"])],frame_data["fmt"])
-            self.publisher_.publish(get_data)
+    def serial_callback(self, data): 
+        print("RX:", data.hex())
+        self.rx_queue.put(data)
+        self.guard.trigger()
+    def process_rx_queue(self):
+        while not self.rx_queue.empty():
+            data = self.rx_queue.get()
+            if len(data) < 2:
+                continue
+            if data[0:1] != self.in_first_frame:
+                continue
+            frame_id = data[1:2]
+            frame_data = self.in_frame_list.get(frame_id)
+            if frame_data is None:
+                continue
+            else :
+                if len(data) < 2 + struct.calcsize(frame_data["fmt"]):
+                    continue
+                get_data = frame_data["dispose"](data[2:2 + struct.calcsize(frame_data["fmt"])],frame_data["fmt"])
+                frame_data["send"].publish(get_data)
+
     def dispose_odom(self, data, fmt):
         x, y, z = struct.unpack(fmt, data)
         msg = Vector3Stamped()
